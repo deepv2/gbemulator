@@ -1,16 +1,8 @@
 #include "cpu.hpp"
-#define PC_START 0x100
 
-CPU::CPU()
-{
-	a = 0;
-	b = 0;
-	c = 0;
-	d = 0;
-	e = 0;
-	f = 0;
-	h = 0;
-	l = 0;
+CPU::CPU() {
+	int i;
+	for(i = 0; i < REG_MAX; i++) reg[i] = 0;
 	sp = 0; //change later
 	pc = (uint16_t)PC_START;
 	cycles = 0;
@@ -19,7 +11,6 @@ CPU::CPU()
 	flags.half_carry = 0;
 	flags.carry = 0;
 	flags.padding = 0;
-	internal_memory.fill(0);
 }
 
 CPU::CPU(const char *str) : CPU() {
@@ -35,89 +26,66 @@ CPU::CPU(const std::string &str) : CPU() {
  * Returns: -1 on error
  */
 int CPU::loadCart(const char *str) {
-	#ifdef LINUX
-	// open file to check if actual file
-	int fd = open(str, O_RDONLY | O_EXCL, "rb");
-	if(fd == -1) return -1;
-
-	// calculate file size with istream
-	std::ifstream file(str, std::ios::binary);
-	int fsize_start = file.tellg();
-	file.seekg(0, file.end);
-	fsize = file.tellg();
-	fsize = fsize - fsize_start;
-
-
-	// use mmap to map game cart address to CPU object
-	game_cart = (uint8_t*)mmap(NULL, fsize, PROT_READ, MAP_PRIVATE, fd, 0);
-	close(fd);
-	if(game_cart == MAP_FAILED) return 1;
-	return 0;
-
-	// TO-DO: Windows File-mapping implementation
-	#else
-	return -1;
-	#endif
 }
 
 
 int CPU::decodeOpcode() {
 	uint8_t opcode, imm8;
-	opcode = game_cart[pc++];
+	//opcode = game_cart[pc++];
 	switch(opcode) {
 		// 8-bit LD Ops
 		case 0x06: // LD B,n
-			imm8 = game_cart[pc++];
-			b = (int8_t)imm8;
+			//imm8 = game_cart[pc++];
+			reg[B] = (int8_t)imm8;
 			cycles += 8;
 			break;
 		case 0x0E: // LD C,n
-			imm8 = game_cart[pc++];
-			c = (int8_t)imm8;
+			//imm8 = game_cart[pc++];
+			reg[C] = (int8_t)imm8;
 			cycles += 8;
 			break;
 		case 0x16: // LD D,n
-			imm8 = game_cart[pc++];
-			d = (int8_t)imm8;
+			//imm8 = game_cart[pc++];
+			reg[D] = (int8_t)imm8;
 			cycles += 8;
 			break;
 		case 0x1E: // LD E,n
-			imm8 = game_cart[pc++];
-			e = (int8_t)imm8;
+			//imm8 = game_cart[pc++];
+			reg[E] = (int8_t)imm8;
 			cycles += 8;
 			break;
 		case 0x26: // LD H,n
-			imm8 = game_cart[pc++];
-			h = (int8_t)imm8;
+			//imm8 = game_cart[pc++];
+			reg[H] = (int8_t)imm8;
 			cycles += 8;
 			break;
 		case 0x2E: // LD L,n
-			imm8 = game_cart[pc++];
-			l = (int8_t)imm8;
+			//imm8 = game_cart[pc++];
+			reg[L] = (int8_t)imm8;
 			cycles += 8;
         	break;
 		case 0x78: // LD A,B
-			a = b;
+			reg[A] = reg[B];
 			cycles += 4;
 			break;
 		case 0x79: // LD A,C
-			a = c;
+			reg[A] = reg[C];
 			cycles += 4;
 			break;
 		case 0x7A: // LD A,D
-			a = d;
+			reg[A] = reg[D];
 			cycles += 4;
 			break;
 		case 0x7B: // LD A,E
-			a = e;
+			reg[A] = reg[E];
 			cycles += 4;
 			break;
 		case 0x7C: // LD A,H
-			a = h;
+			reg[A] = reg[H];
 			cycles += 4;
 			break;
 		case 0x7D: // LD A,L
-			a = l;
+			reg[A] = reg[L];
 			cycles += 4;
 			break;
 		case 0x7E: // LD A,(HL)
@@ -130,170 +98,170 @@ int CPU::decodeOpcode() {
 			cycles += 4;
 			break;
 		case 0x41: // LD B,C
-			b = c;
+			reg[B] = reg[C];
 			cycles += 4;
 			break;
 		case 0x42: // LD B,D
-			b = d;
+			reg[B] = reg[D];
 			cycles += 4;
 			break;
 		case 0x43: // LD B,E
-			b = e;
+			reg[B] = reg[E];
 			cycles += 4;
 			break;
 		case 0x44: // LD B,H
-			b = h;
+			reg[B] = reg[H];
 			cycles += 4;
 			break;
 		case 0x45: // LD B,L
-			b = l;
+			reg[B] = reg[L];
 			cycles += 4;
 			break;
 		case 0x46: // LD B,(HL)
 			cycles += 8;
 			break;
 		case 0x47: // LD B,A
-			b = a;
+			reg[B] = reg[A];
 			cycles += 4;
 			break;
 		case 0x48: // LD C,B
-			c = b;
+			reg[C] = reg[B];
 			cycles += 4;
 			break;
 		case 0x49: // LD C,C
 			cycles += 4;
 			break;
 		case 0x4A: // LD C,D
-			c = d;
+			reg[C] = reg[D];
 			cycles += 4;
 			break;
 		case 0x4B: // LD C,E
-			c = e;
+			reg[C] = reg[E];
 			cycles += 4;
 			break;
 		case 0x4C: // LD C,H
-			c = h;
+			reg[C] = reg[H];
 			cycles += 4;
 			break;
 		case 0x4D: // LD C,L
-			c = l;
+			reg[C] = reg[L];
 			cycles += 4;
 			break;
 		case 0x4E: // LD C,(HL)
 			cycles += 8;
 			break;
 		case 0x4F: // LD C,A
-			c = a;
+			reg[C] = reg[A];
 			cycles += 4;
 			break;
 		case 0x50: // LD D,B
-			d = b;
+			reg[D] = reg[B];
 			cycles += 4;
 			break;
 		case 0x51: // LD D,C
-			d = c;
+			reg[D] = reg[C];
 			cycles += 4;
 			break;
 		case 0x52: // LD D,D
 			cycles += 4;
 			break;
 		case 0x53: // LD D,E
-			d = e;
+			reg[D] = reg[E];
 			cycles += 4;
 			break;
 		case 0x54: // LD D,H
-			d = h;
+			reg[D] = reg[H];
 			cycles += 4;
 			break;
 		case 0x55: // LD D,L
-			d = l;
+			reg[D] = reg[L];
 			cycles += 4;
 			break;
 		case 0x56: // LD D,(HL)
 			cycles += 8;
 			break;
 		case 0x57: // LD D,A
-			d = a;
+			reg[D] = reg[A];
 			cycles += 4;
 			break;
 		case 0x58: // LD E,B
-			e = b;
+			reg[E] = reg[B];
 			cycles += 4;
 			break;
 		case 0x59: // LD E,C
-			e = c;
+			reg[E] = reg[C];
 			cycles += 4;
 			break;
 		case 0x5A: // LD E,D
-			e = d;
+			reg[E] = reg[D];
 			cycles += 4;
 			break;
 		case 0x5B: // LD E,E
 			cycles += 4;
 			break;
 		case 0x5C: // LD E,H
-			e = h;
+			reg[E] = reg[H];
 			cycles += 4;
 			break;
 		case 0x5D: // LD E,L
-			e = l;
+			reg[E] = reg[L];
 			cycles += 4;
 			break;
 		case 0x5E: // LD E,(HL)
 			cycles += 8;
 			break;
 		case 0x5F: // LD E,A
-			e = a;
+			reg[E] = reg[A];
 			cycles += 4;
 			break;
 		case 0x60: // LD H,B
-			h = b;
+			reg[H] = reg[B];
 			cycles += 4;
 			break;
 		case 0x61: // LD H,C
-			h = c;
+			reg[H] = reg[C];
 			cycles += 4;
 			break;
 		case 0x62: // LD H,D
-			h = d;
+			reg[H] = reg[D];
 			cycles += 4;
 			break;
 		case 0x63: // LD H,E
-			h = e;
+			reg[H] = reg[E];
 			cycles += 4;
 			break;
 		case 0x64: // LD H,H
 			cycles += 4;
 			break;
 		case 0x65: // LD H,L
-			h = l;
+			reg[H] = reg[L];
 			cycles += 4;
 			break;
 		case 0x66: // LD H,(HL)
 			cycles += 8;
 			break;
 		case 0x67: // LD H,A
-			h = a;
+			reg[H] = reg[A];
 			cycles += 4;
 			break;
 		case 0x68: // LD L,B
-			l = b;
+			reg[L] = reg[B];
 			cycles += 4;
 			break;
 		case 0x69: // LD L,C
-			l = c;
+			reg[L] = reg[C];
 			cycles += 4;
 			break;
 		case 0x6A: // LD L,D
-			l = d;
+			reg[L] = reg[D];
 			cycles += 4;
 			break;
 		case 0x6B: // LD L,E
-			l = e;
+			reg[L] = reg[E];
 			cycles += 4;
 			break;
 		case 0x6C: // LD L,H
-			l = h;
+			reg[L] = reg[H];
 			cycles += 4;
 			break;
 		case 0x6D: // LD L,L
@@ -303,7 +271,7 @@ int CPU::decodeOpcode() {
 			cycles += 8;
 			break;
 		case 0x6F: // LD L,A
-			l = a;
+			reg[L] = reg[A];
 			cycles += 4;
 			break;
 		case 0x70: // LD (HL), B
@@ -726,7 +694,7 @@ int CPU::decodeOpcode() {
 			break;
 		// Misc
 		case 0xCB:
-			imm8 = game_cart[pc++];
+			//imm8 = game_cart[pc++];
 			switch(imm8) {
 				case 0x37: // SWAP A
 					cycles += 8;
@@ -773,7 +741,7 @@ int CPU::decodeOpcode() {
 			cycles += 4;
 			break;
 		case 0x10: // STOP
-			imm8 = game_cart[pc++];
+		//	imm8 = game_cart[pc++];
 			if(imm8 == 0x00) {
 				cycles += 4;
 				break;
@@ -792,5 +760,4 @@ int CPU::decodeOpcode() {
 
 CPU::~CPU()
 {
-	munmap(game_cart, fsize);
 }

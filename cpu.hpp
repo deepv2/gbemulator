@@ -1,30 +1,23 @@
 #pragma once
+
 #if defined(_WIN32) || defined(_WIN64)
-#define WINDOWS
+	#define WINDOWS
 #endif
+
 #if	defined(__linux__) || defined(__linux) || defined(linux__)
-#define LINUX
+	#define LINUX
 #endif
+
 #include <cstdint>
-#include <fstream>
 #include <string>
-#include <iostream>
-#include <array>
 
-#ifdef LINUX
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <unistd.h>
-#endif
-
-#define MEM_MAX 8192
+#define REG_MAX 8
+#define PC_START 0x100
 
 class CPU
 {
 private:
-	int8_t a, b, c, d, e, f, h, l;
+	int8_t reg[REG_MAX];
 	uint16_t sp, pc;
 	struct __attribute__((packed)) {
 		uint8_t zero : 1;
@@ -33,18 +26,18 @@ private:
 		uint8_t carry : 1;
 		uint8_t padding : 4;
 	} flags;
-	uint8_t * game_cart;
-	size_t fsize;
-	//std::ifstream game_cart;
-	std::array<uint8_t, MEM_MAX> internal_memory;
 	unsigned long cycles;
 
 public:
 	CPU();
-	CPU(const char *str);
-	CPU(const std::string &str);
+	CPU(const char *);
+	CPU(const std::string &);
 	int decodeOpcode();
-	int loadCart(const char *str);
+	int loadCart(const char *);
 	~CPU();
 };
+
+enum {
+	A, B, C, D, E, F, H, L
+} register_index;
 
