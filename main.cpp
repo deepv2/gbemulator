@@ -9,6 +9,7 @@ int main(int argc, char **argv) {
 	}
 	try {
 		Memory m(argv[1]);
+		CPU cpu(m);
 	}
 	catch(int e) {
 		std::cout << "Error: " << e << std::endl;

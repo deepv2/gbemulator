@@ -4,6 +4,7 @@
 #include <cstring>
 #include <cstdint>
 #include <iostream>
+#include <vector>
 
 #include "cpu.hpp"
 
@@ -29,6 +30,8 @@
 #define ROM_SIZE_OFFSET 0x148
 #define RAM_SIZE_OFFSET 0x149
 
+typedef void (*memcntl)(const uint16_t &);
+
 class Memory {
     private:
         uint8_t * game_cart;
@@ -38,23 +41,27 @@ class Memory {
         uint8_t cart_type;
         unsigned int rom_size, rom_max_banks, ram_ext_size, ram_ext_banks;
         uint8_t internal_memory[_8KB];
-        uint8_t * extern_memory;
-        uint8_t * extern_memory_switchable;
+        std::vector<uint8_t> extern_memory;
+        int extern_memory_switchable_offset;
+        void (Memory::*MemoryController)(const uint16_t &, const uint8_t &);
+        bool ext_ram_enabled;
 
         int loadCart(const char *);
         int initializeMemory();
-        void MBC1_handler(const uint16_t &);
-        void MBC2_handler(const uint16_t &);
-        void MBC3_handler(const uint16_t &);
-        void MBC5_handler(const uint16_t &);
+        void MBC1_handler(const uint16_t &, const uint8_t &);
+        void MBC2_handler(const uint16_t &, const uint8_t &);
+        void MBC3_handler(const uint16_t &, const uint8_t &);
+        void MBC5_handler(const uint16_t &, const uint8_t &);
     public:
         Memory();
         Memory(const char *);
         Memory(const std::string &);
         ~Memory();
-        uint8_t readByte(const uint16_t &);
-        uint16_t readWord(const uint16_t &);
-        int writeByte(const uint16_t &);
-        int writeWord(const uint16_t &);
+        inline int addrInRange(const uint16_t &, const uint16_t &, const uint16_t &) const;
+        uint8_t readByte(const uint16_t &) const;
+        uint16_t readWord(const uint16_t &) const;
+        int writeByte(const uint16_t &, const uint8_t &);
+        int writeWord(const uint16_t &, const uint16_t &);
 
 };
+

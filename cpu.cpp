@@ -1,6 +1,6 @@
 #include "cpu.hpp"
 
-CPU::CPU() {
+CPU::CPU(Memory & m) : mem(m) {
 	int i;
 	for(i = 0; i < REG_MAX; i++) reg[i] = 0;
 	sp = 0; //change later
@@ -13,54 +13,38 @@ CPU::CPU() {
 	flags.padding = 0;
 }
 
-CPU::CPU(const char *str) : CPU() {
-	loadCart(str);
-}
-CPU::CPU(const std::string &str) : CPU() {
-	loadCart(str.c_str());
-}
-
-/* int loadCart(const char *str)
- * Creates a file mapping for the game cart and maps
- * the file to a virtual address
- * Returns: -1 on error
- */
-int CPU::loadCart(const char *str) {
-}
-
-
 int CPU::decodeOpcode() {
 	uint8_t opcode, imm8;
-	//opcode = game_cart[pc++];
+	opcode = mem.readByte(pc++);
 	switch(opcode) {
 		// 8-bit LD Ops
 		case 0x06: // LD B,n
-			//imm8 = game_cart[pc++];
+			imm8 = mem.readByte(pc++);
 			reg[B] = (int8_t)imm8;
 			cycles += 8;
 			break;
 		case 0x0E: // LD C,n
-			//imm8 = game_cart[pc++];
+			imm8 = mem.readByte(pc++);
 			reg[C] = (int8_t)imm8;
 			cycles += 8;
 			break;
 		case 0x16: // LD D,n
-			//imm8 = game_cart[pc++];
+			imm8 = mem.readByte(pc++);
 			reg[D] = (int8_t)imm8;
 			cycles += 8;
 			break;
 		case 0x1E: // LD E,n
-			//imm8 = game_cart[pc++];
+			imm8 = mem.readByte(pc++);
 			reg[E] = (int8_t)imm8;
 			cycles += 8;
 			break;
 		case 0x26: // LD H,n
-			//imm8 = game_cart[pc++];
+			imm8 = mem.readByte(pc++);
 			reg[H] = (int8_t)imm8;
 			cycles += 8;
 			break;
 		case 0x2E: // LD L,n
-			//imm8 = game_cart[pc++];
+			imm8 = mem.readByte(pc++);
 			reg[L] = (int8_t)imm8;
 			cycles += 8;
         	break;
@@ -89,7 +73,11 @@ int CPU::decodeOpcode() {
 			cycles += 4;
 			break;
 		case 0x7E: // LD A,(HL)
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			reg[A] = mem.readByte(addr);
 			cycles += 8;
+		}
 			break;
 		case 0x7F: // LD A,A
 			cycles += 4;
@@ -118,7 +106,11 @@ int CPU::decodeOpcode() {
 			cycles += 4;
 			break;
 		case 0x46: // LD B,(HL)
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			reg[B] = mem.readByte(addr);
 			cycles += 8;
+		}
 			break;
 		case 0x47: // LD B,A
 			reg[B] = reg[A];
@@ -148,7 +140,11 @@ int CPU::decodeOpcode() {
 			cycles += 4;
 			break;
 		case 0x4E: // LD C,(HL)
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			reg[C] = mem.readByte(addr);
 			cycles += 8;
+		}
 			break;
 		case 0x4F: // LD C,A
 			reg[C] = reg[A];
@@ -178,7 +174,11 @@ int CPU::decodeOpcode() {
 			cycles += 4;
 			break;
 		case 0x56: // LD D,(HL)
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			reg[D] = mem.readByte(addr);
 			cycles += 8;
+		}
 			break;
 		case 0x57: // LD D,A
 			reg[D] = reg[A];
@@ -208,7 +208,11 @@ int CPU::decodeOpcode() {
 			cycles += 4;
 			break;
 		case 0x5E: // LD E,(HL)
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			reg[E] = mem.readByte(addr);
 			cycles += 8;
+		}
 			break;
 		case 0x5F: // LD E,A
 			reg[E] = reg[A];
@@ -238,7 +242,11 @@ int CPU::decodeOpcode() {
 			cycles += 4;
 			break;
 		case 0x66: // LD H,(HL)
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			reg[H] = mem.readByte(addr);
 			cycles += 8;
+		}
 			break;
 		case 0x67: // LD H,A
 			reg[H] = reg[A];
@@ -268,79 +276,174 @@ int CPU::decodeOpcode() {
 			cycles += 4;
 			break;
 		case 0x6E: // LD L,(HL)
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			reg[L] = mem.readByte(addr);
 			cycles += 8;
+		}
 			break;
 		case 0x6F: // LD L,A
 			reg[L] = reg[A];
 			cycles += 4;
 			break;
 		case 0x70: // LD (HL), B
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			mem.writeByte(addr, reg[B]);
 			cycles += 8;
+		}
 			break;
 		case 0x71: // LD (HL), C
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			mem.writeByte(addr, reg[C]);
 			cycles += 8;
+		}
 			break;
 		case 0x72: // LD (HL), D
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			mem.writeByte(addr, reg[D]);
 			cycles += 8;
+		}
 			break;
 		case 0x73: // LD (HL), E
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			mem.writeByte(addr, reg[E]);
 			cycles += 8;
+		}
 			break;
 		case 0x74: // LD (HL), H
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			mem.writeByte(addr, reg[H]);
 			cycles += 8;
+		}
 			break;
 		case 0x75: // LD (HL), L
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			mem.writeByte(addr, reg[L]);
 			cycles += 8;
+		}
 			break;
 		case 0x36: // LD (HL), n
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			mem.writeByte(addr, mem.readByte(pc++));
 			cycles += 12;
+		}
 			break;
 		case 0x0A: // LD A,(BC)
+		{
+			uint16_t addr = (reg[B] << 8) | reg[C];
+			reg[A] = mem.readByte(addr);
 			cycles += 8;
+		}
 			break;
 		case 0x1A: // LD A,(DE)
+		{
+			uint16_t addr = (reg[D] << 8) | reg[E];
+			reg[A] = mem.readByte(addr);
 			cycles += 8;
+		}
 			break;
 		case 0xFA: // LD A,(nn)
+		{
+			uint16_t addr = (mem.readByte(pc) << 8) | mem.readByte(pc + 1);
+			pc += 2;
+			reg[A] = mem.readByte(addr);
 			cycles += 16;
+		}
 			break;
 		case 0x3E: // LD A, #
+			reg[A] = mem.readByte(pc++);
 			cycles += 8;
 			break;
 		case 0x02: // LD (BC),A
+		{
+			uint16_t addr = (reg[B] << 8) | reg[C];
+			mem.writeByte(addr, reg[A]);
 			cycles += 8;
+		}
 			break;
 		case 0x12: // LD (DE),A
+		{
+			uint16_t addr = (reg[D] << 8) | reg[E];
+			mem.writeByte(addr, reg[A]);
 			cycles += 8;
+		}
 			break;
 		case 0x77: // LD (HL),A
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			mem.writeByte(addr, reg[A]);
 			cycles += 8;
+		}
 			break;
 		case 0xEA: // LD (nn),A
+		{
+			uint16_t addr = (mem.readByte(pc) << 8) | mem.readByte(pc + 1);
+			pc += 2;
+			mem.writeByte(addr, reg[A]);
 			cycles += 16;
+		}
 			break;
 		case 0xF2: // LD A,($FF00+C)
+			reg[A] = mem.readByte(0xFF00 + reg[C]);
 			cycles += 8;
 			break;
 		case 0xE2: // LD ($FF00+C),A
+			mem.writeByte(0xFF00 + reg[C], reg[A]);
 			cycles += 8;
 			break;
 		case 0x3A: // LD A,(HL) and DEC HL
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			reg[A] = mem.readByte(addr);
+			addr--;
+			reg[H] = (addr & 0xFF00) >> 8;
+			reg[L] = (addr & 0x00FF);
 			cycles += 8;
+		}
 			break;
 		case 0x32: // LD (HL),A and DEC HL
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			mem.writeByte(addr, reg[A]);
+			addr--;
+			reg[H] = (addr & 0xFF00) >> 8;
+			reg[L] = (addr & 0x00FF);
 			cycles += 8;
+		}
 			break;
 		case 0x2A: // LD A,(HL) and INC HL
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			reg[A] = mem.readByte(addr);
+			addr++;
+			reg[H] = (addr & 0xFF00) >> 8;
+			reg[L] = (addr & 0x00FF);
 			cycles += 8;
+		}
 			break;
 		case 0x22: // LD (HL),A and INC HL
+		{
+			uint16_t addr = (reg[H] << 8) | reg[L];
+			mem.writeByte(addr, reg[A]);
+			addr++;
+			reg[H] = (addr & 0xFF00) >> 8;
+			reg[L] = (addr & 0x00FF);
 			cycles += 8;
+		}
 			break;
 		case 0xE0: // LD ($FF00+n),A
+			mem.writeByte(0xFF00 | mem.readByte(pc++), reg[A]);
 			cycles += 12;
 			break;
 		case 0xF0: // LD A,($FF00+n)
+			reg[A] = mem.readByte(0xFF00 + mem.readByte(pc++));
 			cycles += 12;
 			break;
 		// 16-bit LD Ops

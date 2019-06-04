@@ -1,5 +1,21 @@
 #include "memory.hpp"
+#define ROM_LOW 0x0000
+#define ROM_HIGH 0x7FFF
+#define LOW_NIBBLE 0x0F
+#define HIGH_NIBBLE 0xF0
+#define EXT_RAM_ENABLE 0x0A
+#define ROM_BANK_SEL_MASK 0x1F
+#define MBC3_ROM_BANK_MASK 0x7F
 
+
+/* addrInRange()
+ * Checks if a given address is in range of a low and high address passed
+ * as parameters. Returns 1 if in range and 0 if not.
+ */
+inline int Memory::addrInRange(const uint16_t & low, const uint16_t & high, const uint16_t & addr) const {
+    if(addr >= low && addr <= high) return 1;
+    else return 0;
+}
 
 Memory::Memory() {
     game_cart = nullptr;
@@ -11,8 +27,23 @@ Memory::Memory() {
     rom_max_banks = 0;
     ram_ext_banks = 0;
     ram_ext_size = 0;
-    extern_memory = nullptr;
-    extern_memory_switchable = nullptr;
+    extern_memory_switchable_offset = 0;
+    MemoryController = nullptr;
+    ext_ram_enabled = false;
+}
+
+Memory::Memory(const char *str) : Memory() {
+    int ret = loadCart(str);
+    if(ret < 0) throw ret;
+    ret = initializeMemory();
+    if(ret < 0) throw ret;
+}
+
+Memory::Memory(const std::string &str) : Memory() {
+    int ret = loadCart(str.c_str());
+    if(ret < 0) throw ret;
+    ret = initializeMemory();
+    if(ret < 0) throw ret;
 }
 
 int Memory::loadCart(const char *str) {
@@ -56,23 +87,32 @@ int Memory::loadCart(const char *str) {
 	#endif
 }
 
-Memory::Memory(const char *str) : Memory() {
-    int ret = loadCart(str);
-    if(ret < 0) throw ret;
-    ret = initializeMemory();
-    if(ret < 0) throw ret;
-}
-
-Memory::Memory(const std::string &str) : Memory() {
-    int ret = loadCart(str.c_str());
-    if(ret < 0) throw ret;
-    ret = initializeMemory();
-    if(ret < 0) throw ret;
-}
-
 int Memory::initializeMemory() {
     if(game_cart == NULL) return -5;
     cart_type = game_cart[CART_TYPE_OFFSET];
+    switch(cart_type) {
+        case 0x01:
+        case 0x02:
+        case 0x03:
+            MemoryController = &Memory::MBC1_handler;
+            break;
+        case 0x05:
+        case 0x06:
+            MemoryController = &Memory::MBC2_handler;
+            break;
+        case 0x12:
+        case 0x13:
+            MemoryController = &Memory::MBC3_handler;
+            break;
+        case 0x19:
+        case 0x1A:
+        case 0x1B:
+        case 0x1C:
+        case 0x1D:
+        case 0x1E:
+            MemoryController = &Memory::MBC5_handler;
+            break;
+    }
     rom_size = (1 << game_cart[ROM_SIZE_OFFSET]) * _32KB;
     rom_max_banks = rom_size / _16KB;
     ram_ext_size = game_cart[RAM_SIZE_OFFSET];
@@ -99,41 +139,66 @@ int Memory::initializeMemory() {
             break;
     }
     if(ram_ext_size != 0) {
-        extern_memory = new uint8_t[ram_ext_size];
-        extern_memory_switchable = extern_memory;
+        extern_memory = std::vector<uint8_t>(ram_ext_size, 0);
+        extern_memory_switchable_offset = 0;
     }
     return 0;
 }
 
-void Memory::MBC1_handler(const uint16_t &addr) {
+void Memory::MBC1_handler(const uint16_t &addr, const uint8_t &data) {
+    if(addrInRange(0x0000, 0x1FFF, addr)) {
+        if((data & LOW_NIBBLE) == EXT_RAM_ENABLE) ext_ram_enabled = true;
+        else ext_ram_enabled = false;
+        return;
+    } else if(addrInRange(0x2000, 0x3FFF, addr)) {
+        int bank_num = data & ROM_BANK_SEL_MASK;
+    }
+}
+
+void Memory::MBC2_handler(const uint16_t &addr, const uint8_t &data) {
 
 }
 
-void Memory::MBC2_handler(const uint16_t &addr) {
+void Memory::MBC3_handler(const uint16_t &addr, const uint8_t &data) {
+    if(addrInRange(0x0000, 0x1FFF, addr)) {
+        if((data & LOW_NIBBLE) == EXT_RAM_ENABLE) ext_ram_enabled = true;
+        else ext_ram_enabled = false;
+    } else if(addrInRange(0x2000, 0x3FFF, addr)) {
+        int bank_num = (data & MBC3_ROM_BANK_MASK) == 0x00 ? 0x01 : (data & MBC3_ROM_BANK_MASK);
+        gc_switchable_mem = &game_cart[_16KB * bank_num];
+    } else if(addrInRange(0x4000, 0x5FFF, addr)) {
+        extern_memory_switchable_offset = (data & LOW_NIBBLE) * _8KB;
+    }
+}
+
+void Memory::MBC5_handler(const uint16_t &addr, const uint8_t &data) {
 
 }
 
-void Memory::MBC3_handler(const uint16_t &addr) {
-
-}
-
-void Memory::MBC5_handler(const uint16_t &addr) {
-
-}
-
-uint8_t Memory::readByte(const uint16_t &addr) {
+uint8_t Memory::readByte(const uint16_t &addr) const {
+    if(addrInRange(0x0000, 0x3FFF, addr)) return game_cart[addr];
+    else if(addrInRange(0x4000, 0x7FFF, addr)) return gc_switchable_mem[addr - 0x4000];
+    else if(addrInRange(0xA000, 0xBFFF, addr)) return extern_memory[addr - 0xA000 + extern_memory_switchable_offset];
+    else if(addrInRange(0xC000, 0xDFFF, addr)) return internal_memory[addr - 0xC000];
+    else if(addrInRange(0xE000, 0xFDFF, addr)) return internal_memory[addr - 0xE000];
     return 0;
 }
 
-uint16_t Memory::readWord(const uint16_t &addr) {
+uint16_t Memory::readWord(const uint16_t &addr) const {
     return 0;
 }
 
-int Memory::writeByte(const uint16_t &addr) {
+int Memory::writeByte(const uint16_t &addr, const uint8_t &data) {
+    if(addrInRange(ROM_LOW, ROM_HIGH, addr)) (this->*MemoryController)(addr, data);
+    else if(addrInRange(0xA000, 0xBFFF, addr)) extern_memory[addr - 0xA000 + extern_memory_switchable_offset] = data;
+    else if(addrInRange(0xC000, 0xDFFF, addr)) internal_memory[addr - 0xC000] = data;
+    else if(addrInRange(0xE000, 0xFDFF, addr)) internal_memory[addr - 0xE000] = data;
+    else return -1;
     return 0;
 }
 
-int Memory::writeWord(const uint16_t &addr) {
+int Memory::writeWord(const uint16_t &addr, const uint16_t &data) {
+    if(addrInRange(ROM_LOW, ROM_HIGH, addr)) return -1;
     return 0;
 }
 

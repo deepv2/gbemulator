@@ -11,6 +11,8 @@
 #include <cstdint>
 #include <string>
 
+#include "memory.hpp"
+
 #define REG_MAX 8
 #define PC_START 0x100
 
@@ -27,13 +29,11 @@ private:
 		uint8_t padding : 4;
 	} flags;
 	unsigned long cycles;
+	Memory & mem;
 
 public:
-	CPU();
-	CPU(const char *);
-	CPU(const std::string &);
+	CPU(Memory &);
 	int decodeOpcode();
-	int loadCart(const char *);
 	~CPU();
 };
 
